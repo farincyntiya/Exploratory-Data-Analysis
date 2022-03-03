@@ -1,0 +1,219 @@
+---
+title: "Exploratory Data Analysis on the Air Quality Dataset"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Load Packages
+First things first, load the packages needed for further analysis.
+```{r echo=TRUE,results='hide'}
+library(dplyr) # tools for data manipulation
+library(tibble) # tools for better data formatting than the traditional data frame
+library(dlookr) # tools for data exploration
+library(htmltools) # tools for HTML generation and output
+```
+
+### Load Dataset
+The dataset used is `airquality` which is already available in R, the `airquality` dataset is daily air quality measurements in New York, May to September 1973.
+```{r}
+# view data
+head(airquality)
+```
+
+### Data Diagnosis
+
+#### *General Data Diagnosis*
+The diagnosis of all variables in the `airquality` dataset.
+```{r}
+diagnose(airquality)
+```
+* `variables` : Variable Names
+* `types` : Data Type of the Variables
+* `missing_count` : Number of Missing Values
+* `missing_percent` : Percentage of Missing Values
+* `unique_count` : Number of Unique Values
+* `unique_rate` : Rate of Unique Value, Unique Count/Number of Observation
+
+#### *Categorical Data Diagnosis*
+The diagnosis of categorical variables in the `airquality` dataset.
+```{r}
+diagnose_category(airquality)
+```
+The result is NULL because there's no categorical variable in the `airquality` dataset.
+
+#### *Numerical Data Diagnosis*
+The diagnosis of numerical variables in the `airquality` dataset.
+```{r}
+diagnose_numeric(airquality)
+```
+* `min` : Minimum Value
+* `Q1` : 1/4 Quartile, 25th Percentile
+* `mean` : Arithmetic Mean
+* `median` : Median, 50th Percentile
+* `Q3` : 3/4 Quartile, 75th Percentile
+* `max` : Maximum Value
+* `zero` : Number of Observations with a Value of 0
+* `minus` : Number of Observations with Negative Numbers
+* `outlier` : Number of Outliers
+
+#### *Outlier Diagnosis*
+```{r}
+diagnose_outlier(airquality)
+```
+
+#### *Outlier Plot*
+```{r}
+airquality %>%
+  plot_outlier(Ozone, Wind)
+```
+
+#### *Missing Value Intersection Plot*
+```{r}
+plot_na_intersect(airquality)
+```
+
+### Data Diagnosis Made Easier!
+The simple and fast way to perform data exploration, using `diagnose_web_report` from `dlookr` package.
+```{r warning=FALSE,message=FALSE,results='hide'}
+diagnose_web_report(airquality,output_file="airquality_Diagnosis_Report.html",output_dir="~/Downloads/")
+```
+
+```{r, echo=FALSE}
+htmltools::knit_print.html("airquality_Diagnosis_Report.html")
+```
+
+### Descriptive Statistics
+The deep dive into the `airquality` dataset's statistics.
+
+#### Summary
+```{r}
+summary(airquality)
+```
+
+#### Description
+```{r}
+describe(airquality)
+```
+
+#### Normality Checking
+```{r}
+normality(airquality)
+```
+
+#### Normality Plot
+```{r}
+airquality %>%
+  plot_normality(Ozone, Wind)
+```
+
+#### Correlation Matrix
+```{r}
+correlate(airquality)
+```
+
+#### Correlation Plot
+```{r}
+plot_correlate(airquality)
+```
+
+
+### Data Exploration Made Easier!
+The simple and fast way to perform data exploration, using `eda_web_report` from `dlookr` package.
+```{r warning=FALSE,message=FALSE,results='hide'}
+eda_web_report(airquality,output_file="airquality_Exploration_Report.html",output_dir="~/Downloads/")
+```
+
+```{r, echo=FALSE}
+htmltools::knit_print.html("airquality_Exploration_Report.html")
+```
+
+### Data Transformation
+The data transformation is used according to the needs.
+
+#### Handling Missing Values
+Missing values can be handeled by two methods:
+
+##### Remove Missing Values
+```{r}
+NROW(airquality$Ozone)
+```
+```{r}
+x <- na.omit(airquality$Ozone)
+NROW(x)
+```
+
+##### Impute Missing Values
+Methods:
+
+* `mean` : Arithmetic Mean
+* `median` : Median
+* `mode` : Mode
+* `knn` : K-nearest Neighbors (target variable must be specified)
+* `rpart` : Recursive Partitioning and Regression Trees (target variable must be specified)
+* `mice` : Multivariate Imputation by Chained Equations (target variable must be specified, random seed must be set)
+
+```{r}
+ozone_impute <- imputate_na(airquality, Ozone, method = "mean")
+summary(ozone_impute)
+```
+```{r}
+plot(ozone_impute)
+```
+
+#### Handling Outliers
+Outliers can be handeled by two methods:
+
+##### Remove Outliers
+```{r}
+Q1 <- quantile(airquality$Wind, .25)
+Q3 <- quantile(airquality$Wind, .75)
+IQR <- IQR(airquality$Wind)
+no_outliers <- subset(airquality, airquality$Wind > (Q1 - 1.5*IQR) & airquality$Wind < (Q3 + 1.5*IQR))
+NROW(no_outliers)
+```
+
+##### Impute Outliers
+Methods:
+
+* `mean` : Arithmetic Mean
+* `median` : Median
+* `mode` : Mode
+* `capping` : Impute the Upper Outliers with 95th Percentile and Impute the Bottom Outliers with 5th Percentile
+
+```{r}
+out_wind <- imputate_outlier(airquality, Wind, method = "capping")
+summary(out_wind)
+```
+```{r}
+plot(out_wind)
+```
+
+#### Standardization
+Methods:
+
+* `zscore` : Z-score Transformation, (x - mu) / sigma
+* `minmax` : MinMax Transformation, (x - min) / (max - min)
+
+```{r}
+air_trans<- transform(airquality$Wind, method = "minmax")
+boxplot(air_trans)
+```
+
+#### Resolving Skewness
+Methods:
+
+* `log` : Log Transformation, log(x)
+* `log+1` : Tog Transformation, log(x + 1), used for values that contain 0
+* `sqrt` : Square Root Transformation
+* `1/x` : 1 / x Transformation
+* `x^2` : X^2 Transformation
+* `x^3` : X^3 Transformation
+
+```{r}
+Ozone_log = transform(airquality$Ozone, method = "log")
+summary(Ozone_log)
+```
+```{r}
+plot(Ozone_log)
+```
